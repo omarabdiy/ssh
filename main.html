@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prenotazione Parcheggio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background-color: #e3f2fd;
+            margin: 0;
+        }
+        .container {
+            background: #ffffff;
+            padding: 5%;
+            border-radius: 15px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        input, button {
+            width: 100%;
+            padding: 3%;
+            margin: 3% 0;
+            border: 1px solid #bdbdbd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #42a5f5;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background-color: #1e88e5;
+        }
+        .message {
+            margin-top: 4%;
+            padding: 3%;
+            border-radius: 8px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .posti-info {
+            margin-top: 20px;
+            text-align: center;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f5f5f5;
+        }
+        .posti-count {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2196f3;
+        }
+        .refresh-button {
+            background-color: #78909c;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Prenotazione Parcheggio</h2>
+        <input type="text" id="nome" placeholder="Inserisci il nome">
+        <input type="text" id="cognome" placeholder="Inserisci il cognome">
+        <button onclick="prenotaParcheggio()">Prenota</button>
+        <div id="messaggio" class="message"></div>
+        
+        <div id="postiInfo" class="posti-info">
+            <h3>Disponibilità Parcheggio</h3>
+            <div id="postiCount" class="posti-count">Caricamento in corso...</div>
+        </div>
+        <button class="refresh-button" onclick="caricaDisponibilita()">Aggiorna Disponibilità</button>
+    </div>
+
+    <script>
+    // Carica la disponibilità al caricamento della pagina
+    document.addEventListener('DOMContentLoaded', caricaDisponibilita);
+    
+    async function caricaDisponibilita() {
+        const postiCountElement = document.getElementById('postiCount');
+        postiCountElement.textContent = 'Caricamento in corso...';
+        
+        try {
+            const response = await fetch('https://tpsit-progetto-default-rtdb.europe-west1.firebasedatabase.app/parcheggi.json');
+            const data = await response.json();
+            
+            if (!data) {
+                postiCountElement.textContent = 'Nessun dato disponibile';
+                return;
+            }
+            
+            let postiLiberi = 0;
+            let postiTotali = 0;
+            
+            for (const posto in data) {
+                postiTotali++;
+                if (data[posto].stato === 'libero' && !data[posto].prenotato) {
+                    postiLiberi++;
+                }
+            }
+            
+            postiCountElement.textContent = `${postiLiberi} posti liberi su ${postiTotali} totali`;
+            
+        } catch (error) {
+            postiCountElement.textContent = 'Errore durante il caricamento';
+            console.error('Errore:', error);
+        }
+    }
+
+    async function prenotaParcheggio() {
+        const nome = document.getElementById('nome').value.trim();
+        const cognome = document.getElementById('cognome').value.trim();
+        const messaggio = document.getElementById('messaggio');
+
+        if (!nome || !cognome) {
+            messaggio.textContent = 'Inserisci nome e cognome.';
+            messaggio.className = 'message error';
+            return;
+        }
+
+        // Generazione codice casuale basato su nome e cognome
+        const codice = generaCodice(nome, cognome);
+
+        try {
+            // Leggere i parcheggi disponibili
+            const response = await fetch('https://tpsit-progetto-default-rtdb.europe-west1.firebasedatabase.app/parcheggi.json');
+            const data = await response.json();
+
+            // Trovare un posto libero
+            let postoLibero = null;
+            for (const posto in data) {
+                if (data[posto].stato === 'libero' && !data[posto].prenotato) {
+                    postoLibero = posto;
+                    break;
+                }
+            }
+
+            if (!postoLibero) {
+                messaggio.textContent = 'Nessun posto disponibile.';
+                messaggio.className = 'message error';
+                return;
+            }
+
+            // Aggiornare il posto trovato con prenotazione e codice
+            const url = `https://tpsit-progetto-default-rtdb.europe-west1.firebasedatabase.app/parcheggi/${postoLibero}.json`;
+
+            await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    stato: 'libero',
+                    prenotato: true,
+                    codice: codice
+                })
+            });
+
+            messaggio.textContent = `Posto: ${postoLibero} | Codice: ${codice}`;
+            messaggio.className = 'message success';
+            
+            // Aggiornare la disponibilità dopo la prenotazione
+            caricaDisponibilita();
+            
+        } catch (error) {
+            messaggio.textContent = 'Errore di connessione con il database.';
+            messaggio.className = 'message error';
+            console.error('Errore:', error);
+        }
+    }
+
+    // Funzione per generare codice casuale
+    function generaCodice(nome, cognome) {
+        const lettere = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const caratteriCasuali = Array.from({ length: 3 }, () =>
+            lettere.charAt(Math.floor(Math.random() * lettere.length))
+        ).join('');
+        return nome[0].toUpperCase() + cognome[0].toUpperCase() + caratteriCasuali;
+    }
+    </script>
+</body>
+</html>

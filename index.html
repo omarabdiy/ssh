@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prenotazione Parcheggio</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Prenotazione Parcheggio</h2>
+        <input type="text" id="nome" placeholder="Inserisci il nome">
+        <input type="text" id="cognome" placeholder="Inserisci il cognome">
+        <button onclick="prenotaParcheggio()">Prenota</button>
+        <div id="messaggio" class="message"></div>
+        
+        <div id="postiInfo" class="posti-info">
+            <h3>Disponibilità Parcheggio</h3>
+            <div id="postiCount" class="posti-count">Caricamento in corso...</div>
+        </div>
+        <button class="refresh-button" onclick="caricaDisponibilita()">Aggiorna Disponibilità</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
